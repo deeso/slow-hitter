@@ -1,0 +1,105 @@
+import logging
+import argparse
+import sys
+
+from slow.hitter import HitterService as Hitter
+from slow.hitter import KnownHosts
+
+logging.getLogger().setLevel(logging.INFO)
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(message)s')
+ch.setFormatter(formatter)
+logging.getLogger().addHandler(ch)
+
+parser = argparse.ArgumentParser(description='Start syslog-grok-mongo captures.')
+
+#  Mongo configs
+parser.add_argument('-mhost', type=str, default='',
+                    help='mongo host address or name')
+parser.add_argument('-mport', type=int, default=27017,
+                    help='mongo port')
+parser.add_argument('-muser', type=str, default=None,
+                    help='mongo username')
+parser.add_argument('-mpass', type=str, default=None,
+                    help='mongo user password')
+parser.add_argument('-mdb', type=str, default=None,
+                    help='mongo db name')
+
+#  ETL stuff
+parser.add_argument('-cpdir', type=str, default=DEFAULT_PATTERNS,
+                    help='directory containing custom grok patterns directory')
+parser.add_argument('-names', type=str, default=DEFAULT_NAMES,
+                    help='file containing all the names for rule patterns')
+parser.add_argument('-gconfig', type=str, default=DEFAULT_CONFIG,
+                    help='Grok frontend configuration for rule chains')
+
+#  Hitter stuff
+parser.add_argument('-broker', type=str, default=None,
+                    help='kombu queue address')
+parser.add_argument('-queue', type=str, default=Hitter.LOGSTASH_QUEUE,
+                    help='kombu queue name to publish to')
+parser.add_argument('-known_hosts', type=str, default=KnownHosts.HOST_FILE,
+                    help='hosts file to load')
+parser.add_argument('-logstash_uri', type=str, default=Hitter.LOGSTASH_URI,
+                    help='logstash uri (udp, tcp, redis, or amqp)')
+
+parser.add_argument('-logstash_queue', type=str, default='default',
+                    help='kombu queue name to publish to')
+
+V = 'log levels: INFO: %d, DEBUG: %d, WARRNING: %d' % (logging.INFO,
+                                                       logging.DEBUG,
+                                                       logging.WARNING)
+parser.add_argument('-log_level', type=int, default=logging.ALERT,
+                    help=V)
+
+
+def setup_known_hosts(parser_args):
+    global KNOWN_HOSTS
+    known_hosts = parser_args.known_hosts
+    if known_hosts is not None:
+        logging.debug("Loading known hosts")
+        data = open(known_hosts).read()
+        for line in data.splitlines():
+            if len(line.strip()) == 0:
+                continue
+            ip, host = line.strip().split()
+            KNOWN_HOSTS[ip] = host
+        logging.debug("Loading known hosts completed")
+
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+
+    mongo_backend = MongoConnection(args.mhost, args.mport,
+                                    args.muser, args.mpass,
+                                    args.mdb)
+    etl_backend = ETL.setup_grokker(args)
+
+    service = Hitter(broker_uri=args.broker_uri, broker_queue=args.queue,
+                     hosts_file=args.known_hosts, mongo_backend=mongo_backend,
+                     etl_backend=etl_backend, logstash_uri=args.logstash_uri,
+                     logstash_queue=args.logstash_queue)
+
+    try:
+        logging.debug("Starting the syslog listener")
+        server = SyslogUDPHandler.get_server(args.shost, args.sport)
+        server.serve_forever(poll_interval=0.5)
+    except (IOError, SystemExit):
+        raise
+    except KeyboardInterrupt:
+        raise
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    if args.uri is None:
+        raise Exception("Must specify the uri for kombu")
+    try:
+        SyslogCatcherUDPHandler.set_kombu(args.uri, args.queue)
+        server = SyslogCatcherUDPHandler.get_server(args.chost, args.cport)
+        logging.debug("Starting the syslog catcher")
+        server.serve_forever(poll_interval=0.5)
+    except (IOError, SystemExit):
+        raise
+    except KeyboardInterrupt:
+        raise

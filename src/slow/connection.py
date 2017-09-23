@@ -111,7 +111,7 @@ class KombuConnection(Connection):
     @property
     def queue(self):
         if self._queue is None:
-            self._queue = self.socket.Queue(self.queue_name)
+            self._queue = self.socket.SimpleQueue(self.queue_name)
         return self._queue
 
     def send_message(self, msg):

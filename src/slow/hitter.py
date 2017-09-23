@@ -201,6 +201,7 @@ class HitterService(ConsumerMixin):
 
     def process_and_report(self, message_str):
         logging.debug("Processing and report syslog_msg")
+        message = {}
         try:
             message = json.loads(message_str)
         except:
@@ -214,6 +215,7 @@ class HitterService(ConsumerMixin):
                                         syslog_server_ip,
                                         catcher_name, catcher_tz)
         self.store_results(syslog_msg, etl_data)
+        return etl_data
 
     def _read_messages(self, uri, queue, callback=None, cnt=1):
         msgs = []
@@ -229,10 +231,11 @@ class HitterService(ConsumerMixin):
                     cnt += -1
                     try:
                         message = q.get(block=False)
-                        data = message.payload
-                        msgs.append(json.loads(data))
+                        print message.payload
                         if callback is not None:
-                            callback(data)
+                            data = callback(message.payload)
+                            msgs.append(data)
+                            print data
                         message.ack()
                     except Queue.Empty:
                         break

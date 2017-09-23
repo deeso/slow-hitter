@@ -120,7 +120,7 @@ class KombuConnection(Connection):
         except:
             raise
 
-    def read_message(self, callback=None, cnt=1):
+    def read_messages(self, callback=None, cnt=1):
         msgs = []
         read_all = False
         if cnt < 1:

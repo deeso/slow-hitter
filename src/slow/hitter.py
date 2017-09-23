@@ -2,6 +2,7 @@ from hashlib import sha256
 from datetime import datetime
 from .etl import ETL
 from kombu.mixins import ConsumerMixin
+from kombu import Connection
 
 import Queue
 from tzlocal import get_localzone
@@ -266,7 +267,8 @@ class HitterService(ConsumerMixin):
         self.store_kombu(etl_data)
 
     def read_messages(self):
-        msgs = self._read_messages(cnt=self.msg_limit,
+        msgs = self._read_messages(self.logstash_uri, self.logstash_queue,
+                                   cnt=self.msg_limit,
                                    callback=self.process_and_report)
         return msgs
 

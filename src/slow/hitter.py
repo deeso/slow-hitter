@@ -4,6 +4,7 @@ from .etl import ETL
 from .connection import Connection
 from kombu.mixins import ConsumerMixin
 
+import Queue
 from tzlocal import get_localzone
 import json
 import time
@@ -202,23 +203,6 @@ class HitterService(ConsumerMixin):
         r.update(sm)
         return r
 
-    def send_results(self, syslog_msg, etl_data):
-        if self.mongo_backend is not None:
-            m = "Sending results to mongo"
-            logging.debug(m)
-            raw_insert, json_insert = self.mongo_backend.insert(
-                                                                syslog_msg,
-                                                                etl_data)
-            if not raw_insert:
-                logging.debug("Failed to insert the raw syslog information in mongo")
-            if not json_insert:
-                logging.debug("Failed to insert the processed syslog information in mongo")
-
-        m = "Sending results to logstash"
-        logging.debug(m)
-        if not self.logstash_conn.send_message(etl_data):
-            logging.debug("Failed to send the logs to logstash")
-
     def process_and_report(self, message_str):
         logging.debug("Processing and report syslog_msg")
         try:
@@ -233,11 +217,57 @@ class HitterService(ConsumerMixin):
         etl_data = self.process_message(syslog_msg,
                                         syslog_server_ip,
                                         catcher_name, catcher_tz)
-        self.send_results(syslog_msg, etl_data)
+        self.store_results(syslog_msg, etl_data)
+
+    def _read_messages(self, uri, queue, callback=None, cnt=1):
+        msgs = []
+        read_all = False
+        if cnt < 1:
+            read_all = True
+
+        try:
+            logging.debug("Reading the messages")
+            with Connection(uri) as conn:
+                q = conn.SimpleQueue(queue)
+                while cnt > 0 or read_all:
+                    cnt += -1
+                    try:
+                        message = q.get(block=False)
+                        data = message.payload
+                        msgs.append(json.loads(data))
+                        if callback is not None:
+                            callback(data)
+                        message.ack()
+                    except Queue.Empty:
+                        break
+            logging.debug("Successfully read %d messages" % len(msgs))
+        except:
+            logging.debug("Failed to read message")
+
+    def store_results(self, syslog_msg, etl_data):
+        if self.mongo_backend is not None:
+            m = "Sending results to mongo"
+            logging.debug(m)
+            raw_insert, json_insert = self.mongo_backend.insert(
+                                                                syslog_msg,
+                                                                etl_data)
+            if not raw_insert:
+                logging.debug("Failed to insert the raw syslog information in mongo")
+            if not json_insert:
+                logging.debug("Failed to insert the processed syslog information in mongo")
+
+        logging.debug("Storing message in logstash queue")
+        try:
+            with Connection(self.logstash_conn) as conn:
+                q = conn.SimpleQueue(self.logstash_queue)
+                q.put(json.dumps(etl_data))
+                q.close()
+        except:
+            logging.debug("Storing message done")
 
     def read_messages(self):
-        msgs = self.conn.read_messages(cnt=self.msg_limit,
-                                       callback=self.process_and_report)
+        msgs = self._read_messages(cnt=self.msg_limit,
+                                   callback=self.process_and_report)
         return msgs
 
     def serve_forever(self, poll_interval=1.0):

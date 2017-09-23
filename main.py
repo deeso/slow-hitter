@@ -46,7 +46,7 @@ parser.add_argument('-known_hosts', type=str, default=KnownHosts.HOST_FILE,
 V = 'log levels: INFO: %d, DEBUG: %d, WARRNING: %d' % (logging.INFO,
                                                        logging.DEBUG,
                                                        logging.WARNING)
-parser.add_argument('-log_level', type=int, default=logging.ALERT,
+parser.add_argument('-log_level', type=int, default=logging.DEBUG,
                     help=V)
 
 
@@ -72,30 +72,17 @@ if __name__ == "__main__":
                                     args.mdb)
     etl_backend = ETL.setup_grokker(args)
 
-    service = Hitter(broker_uri=args.broker_uri, broker_queue=args.queue,
-                     hosts_file=args.known_hosts, mongo_backend=mongo_backend,
-                     etl_backend=etl_backend, logstash_uri=args.logstash_uri,
-                     logstash_queue=args.logstash_queue)
+    service = Hitter(broker_uri=args.broker_uri,
+                     broker_queue=args.broker_queue,
+                     hosts_file=args.known_hosts,
+                     mongo_backend=mongo_backend,
+                     etl_backend=etl_backend,
+                     logstash_uri=args.buffer_uri,
+                     logstash_queue=args.buffer_queue)
 
     try:
         logging.debug("Starting the syslog listener")
-        server = SyslogUDPHandler.get_server(args.shost, args.sport)
-        server.serve_forever(poll_interval=0.5)
-    except (IOError, SystemExit):
-        raise
-    except KeyboardInterrupt:
-        raise
-
-if __name__ == "__main__":
-    args = parser.parse_args()
-    if args.broker_uri is None:
-        raise Exception("Must specify the uri for kombu")
-    try:
-        # FIXME add appropriate calls and initialization here
-        SyslogCatcherUDPHandler.set_kombu(args.broker_uri, args.queue)
-        server = SyslogCatcherUDPHandler.get_server(args.chost, args.cport)
-        logging.debug("Starting the syslog catcher")
-        server.serve_forever(poll_interval=0.5)
+        service.serve_forever(poll_interval=0.5)
     except (IOError, SystemExit):
         raise
     except KeyboardInterrupt:

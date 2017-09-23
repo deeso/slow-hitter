@@ -4,6 +4,7 @@ from .etl import ETL
 from .connection import Connection
 from kombu.mixins import ConsumerMixin
 
+from tzlocal import get_localzone
 import json
 import time
 import pytz
@@ -146,20 +147,21 @@ class HitterService(ConsumerMixin):
         return cls.SYSLOG_MSG_TYPE[v]
 
     @classmethod
-    def format_timestamp(self, tstamp):
-        global MY_TZ
-        local_tz = MY_TZ.localize(tstamp, is_dst=None)
+    def format_timestamp(self, tstamp, catcher_tz_str):
+        catcher_tz = pytz.timezone(catcher_tz_str)
+        local_tz = catcher_tz.localize(tstamp, is_dst=None)
         utc_tz = local_tz.astimezone(pytz.utc)
 
         return utc_tz.strftime("%Y-%m-%dT%H:%M:%S") +\
             ".%03d" % (tstamp.microsecond / 1000) + "Z"
 
     @classmethod
-    def get_base_json(cls, syslog_msg, syslog_server_ip, catcher_name):
+    def get_base_json(cls, syslog_msg, syslog_server_ip,
+                      catcher_name, catcher_tz):
         r = {'source': "syslog", 'raw': syslog_msg,
              'type': 'json',
              '_id': sha256(syslog_msg).hexdigest(),
-             '@timestamp': cls.format_timestamp(datetime.now()),
+             '@timestamp': cls.format_timestamp(datetime.now(), catcher_tz),
              '@version': "1",
              'message': "transformed syslog",
              'path': '',
@@ -178,7 +180,8 @@ class HitterService(ConsumerMixin):
     def resolve_host(cls, ip_host):
         return cls.KNOWN_HOSTS.resolve_host(ip_host)
 
-    def process_message(self, syslog_msg, syslog_server_ip, catcher_name):
+    def process_message(self, syslog_msg, syslog_server_ip,
+                        catcher_name, catcher_tz):
         m = "Extracting and converting msg from %s msg (syslog: %s)" % (syslog_server_ip, catcher_name)
         logging.debug(m)
         r = self.get_base_json(syslog_msg, syslog_server_ip, catcher_name)
@@ -224,10 +227,11 @@ class HitterService(ConsumerMixin):
         syslog_msg = message.get('syslog_msg', '')
         syslog_server_ip = message.get('syslog_server_ip', '')
         catcher_name = message.get('catcher_name', '')
+        catcher_tz = message.get('catcher_tz', get_localzone())
 
         etl_data = self.process_message(syslog_msg,
                                         syslog_server_ip,
-                                        catcher_name)
+                                        catcher_name, catcher_tz)
         self.send_results(syslog_msg, etl_data)
 
     def read_messages(self):

@@ -216,7 +216,7 @@ class HitterService(ConsumerMixin):
 
         m = "Sending results to logstash"
         logging.debug(m)
-        if not self.logstash_conn.send_msg(etl_data):
+        if not self.logstash_conn.send_message(etl_data):
             logging.debug("Failed to send the logs to logstash")
 
     def process_and_report(self, message_str):

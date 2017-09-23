@@ -31,7 +31,7 @@ class KnownHosts(object):
                 continue
             elif line.strip().find('#') == 0:
                 continue
-            elif len(l.split()) < 2:
+            elif len(line.split()) < 2:
                 continue
 
             l = line.strip()

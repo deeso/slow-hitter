@@ -1,11 +1,13 @@
 from hashlib import sha256
 from datetime import datetime
 from .etl import ETL
-import pytz
-import socket
 from .connection import Connection
 from kombu.mixins import ConsumerMixin
+
+import json
 import time
+import pytz
+import socket
 
 import logging
 import os
@@ -213,8 +215,12 @@ class HitterService(ConsumerMixin):
         if not self.logstash_conn.send_msg(etl_data):
             logging.debug("Failed to send the logs to logstash")
 
-    def process_and_report(self, message):
+    def process_and_report(self, message_str):
         logging.debug("Processing and report syslog_msg")
+        try:
+            message = json.loads(message_str)
+        except:
+            raise
         syslog_msg = message.get('syslog_msg', '')
         syslog_server_ip = message.get('syslog_server_ip', '')
         catcher_name = message.get('catcher_name', '')

@@ -14,14 +14,10 @@ logging.getLogger().addHandler(ch)
 
 parser = argparse.ArgumentParser(description='Start syslog-grok-mongo captures.')
 
+parser.add_argument('-name', type=str, default=Hitter.NAME,
+                    help='name of the service')
 #  Mongo configs
-parser.add_argument('-mhost', type=str, default='',
-                    help='mongo host address or name')
-parser.add_argument('-mport', type=int, default=27017,
-                    help='mongo port')
-parser.add_argument('-muser', type=str, default=None,
-                    help='mongo username')
-parser.add_argument('-mpass', type=str, default=None,
+parser.add_argument('-muri', type=str, default=None,
                     help='mongo user password')
 parser.add_argument('-mdb', type=str, default=None,
                     help='mongo db name')
@@ -35,17 +31,17 @@ parser.add_argument('-gconfig', type=str, default=DEFAULT_CONFIG,
                     help='Grok frontend configuration for rule chains')
 
 #  Hitter stuff
-parser.add_argument('-broker', type=str, default=None,
+parser.add_argument('-broker_uri', type=str, default=Hitter.BROKER_URI,
                     help='kombu queue address')
-parser.add_argument('-queue', type=str, default=Hitter.LOGSTASH_QUEUE,
+parser.add_argument('-broker_queue', type=str, default=Hitter.BROKER_QUEUE,
                     help='kombu queue name to publish to')
+parser.add_argument('-buffer_uri', type=str, default=Hitter.BROKER_URI,
+                    help='buffer uri for results')
+parser.add_argument('-buffer_queue', type=str, default=Hitter.LOGSTASH_QUEUE,
+                    help='kombu queue for results')
 parser.add_argument('-known_hosts', type=str, default=KnownHosts.HOST_FILE,
                     help='hosts file to load')
-parser.add_argument('-logstash_uri', type=str, default=Hitter.LOGSTASH_URI,
-                    help='logstash uri (udp, tcp, redis, or amqp)')
 
-parser.add_argument('-logstash_queue', type=str, default='default',
-                    help='kombu queue name to publish to')
 
 V = 'log levels: INFO: %d, DEBUG: %d, WARRNING: %d' % (logging.INFO,
                                                        logging.DEBUG,
@@ -92,10 +88,11 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    if args.uri is None:
+    if args.broker_uri is None:
         raise Exception("Must specify the uri for kombu")
     try:
-        SyslogCatcherUDPHandler.set_kombu(args.uri, args.queue)
+        # FIXME add appropriate calls and initialization here
+        SyslogCatcherUDPHandler.set_kombu(args.broker_uri, args.queue)
         server = SyslogCatcherUDPHandler.get_server(args.chost, args.cport)
         logging.debug("Starting the syslog catcher")
         server.serve_forever(poll_interval=0.5)

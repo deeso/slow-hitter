@@ -1,5 +1,4 @@
 from pymongo import MongoClient
-import urllib
 from hashlib import sha256
 
 
@@ -11,24 +10,9 @@ class MongoConnection(object):
     FMT_UP = "mongodb://{username}:{password}@{host}:{port}"
     FMT_NUP = "mongodb://{host}:{port}"
 
-    def __init__(self, host=None, port=None, user=None,
-                 password=None, db_name=None, uri=None):
+    def __init__(self, db_name=None, uri=None):
         self.uri = uri
-        self.host = host
-        self.port = port
-        self.password = None
-        if password is not None:
-            self.password = urllib.quote_plus(password)
-        self.user = user
         self.db_name = self.DB_NAME if db_name is None else db_name
-
-        if host is not None and port is not None:
-            self.uri = self.FMT_NUP.format(**{'host': host, 'port': port})
-
-        if self.user is not None and self.password is not None:
-            self.uri = self.FMT_NUP.format(**{'host': host, 'port': port,
-                                              'username': user,
-                                              'password': self.password})
 
     def has_obj(self, mongodb_col, data):
         x = [i for i in mongodb_col.find(data).limit(1)]

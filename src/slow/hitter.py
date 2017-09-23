@@ -8,9 +8,6 @@ from kombu.mixins import ConsumerMixin
 import time
 
 import logging
-import sys
-import json
-from kombu import Connection
 import os
 
 
@@ -70,10 +67,9 @@ class KnownHosts(object):
 
 class HitterService(ConsumerMixin):
     NAME = 'processor'
-    KOMBU_URI = "redis://127.0.0.1:6379"
-    KOMBU_Q = "mystified-catcher"
+    BROKER_URI = "redis://127.0.0.1:6379"
+    BROKER_QUEUE = "mystified-catcher"
     KNOWN_HOSTS = KnownHosts()
-    LOGSTASH_URI = "udp://127.0.0.1:5002"
     LOGSTASH_QUEUE = "logstash-results"
     SYSLOG_MSG_TYPE = {
         0: "EMERGENCY",
@@ -86,11 +82,11 @@ class HitterService(ConsumerMixin):
         7: "DEBUG",
     }
 
-    def __init__(self, broker_uri=KOMBU_URI, broker_queue=KOMBU_Q,
+    def __init__(self, broker_uri=BROKER_URI, broker_queue=BROKER_QUEUE,
                  hosts_file=None, mongo_backend=None,
                  etl_backend=ETL, msg_limit=100,
                  #  leaving it open to use kombu to buffer messages
-                 logstash_uri=LOGSTASH_URI,
+                 logstash_uri=BROKER_URI,
                  logstash_queue=LOGSTASH_QUEUE):
 
         if hosts_file is not None:

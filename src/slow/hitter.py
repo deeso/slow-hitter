@@ -31,10 +31,21 @@ class KnownHosts(object):
                 continue
             elif line.strip().find('#') == 0:
                 continue
+            elif len(l.split()) < 2:
+                continue
+
             l = line.strip()
-            host, ip = l.split()
-            mapping[host.strip()] = ip.strip()
-            mapping[ip.strip()] = host.strip()
+            ip = l.split()[0]
+            host_names = l.split()[1:]
+            if len(host_names) == 0:
+                continue
+
+            #  FIXME this means the expected mapping[ip] = host
+            #  may not be right
+            ip_host_mappings = [(ip, h) for h in host_names]
+            for ip, host in ip_host_mappings:
+                mapping[host.strip()] = ip.strip()
+                mapping[ip.strip()] = host.strip()
         return mapping
 
     def is_ip(self, ip):

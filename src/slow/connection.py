@@ -1,6 +1,5 @@
 import json
 import socket
-from kombu import Exchange, Queue
 from kombu import Connection as _KombuConnection
 
 
@@ -39,7 +38,7 @@ class Connection(object):
             return UdpConnection(uri.strip())
         elif uri.strip().find('tcp://') == 0:
             return TcpConnection(uri.strip())
-        elif uri.strip().find('aqmp://') == 0 or \
+        elif uri.strip().find('aqmp://') == 0 or\
              uri.strip().find('redis://') == 0:
             return KombuConnection(uri.strip(), queue=queue)
         raise Exception("Unable to handle URI type: %s" % uri)

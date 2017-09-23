@@ -1,6 +1,5 @@
 import json
 import socket
-from 
 from kombu import Exchange, Queue
 from kombu import Connection as _KombuConnection
 

@@ -12,7 +12,7 @@ setup(name='slow-hitter',
       description=DESC,
       author='adam pridgen',
       author_email='dso@thecoverofnight.com',
-      install_requires=['kombu', 'redis'],
+      install_requires=['kombu', 'redis', 'pymongo'],
       packages=find_packages('src'),
       package_dir={'': 'src'},
 )

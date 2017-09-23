@@ -184,7 +184,8 @@ class HitterService(ConsumerMixin):
                         catcher_name, catcher_tz):
         m = "Extracting and converting msg from %s msg (syslog: %s)" % (syslog_server_ip, catcher_name)
         logging.debug(m)
-        r = self.get_base_json(syslog_msg, syslog_server_ip, catcher_name)
+        r = self.get_base_json(syslog_msg, syslog_server_ip,
+                               catcher_name, catcher_tz)
         sm = {}
         try:
             result = self.etl_backend.syslog_et(syslog_msg)

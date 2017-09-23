@@ -1,7 +1,6 @@
 from hashlib import sha256
 from datetime import datetime
 from .etl import ETL
-from .connection import Connection
 from kombu.mixins import ConsumerMixin
 
 import Queue
@@ -111,10 +110,6 @@ class HitterService(ConsumerMixin):
         self.queue = broker_queue
         self.logstash_uri = logstash_uri
         self.logstash_queue = logstash_queue
-
-        self.conn = Connection.create_connection(broker_uri, broker_queue)
-        x = Connection.create_connection(logstash_uri, logstash_queue)
-        self.logstash_conn = x
 
         self.mongo_backend = mongo_backend
         self.etl_backend = etl_backend
@@ -244,7 +239,7 @@ class HitterService(ConsumerMixin):
         except:
             logging.debug("Failed to read message")
 
-    def store_results(self, syslog_msg, etl_data):
+    def store_mongo(self, syslog_msg, etl_data):
         if self.mongo_backend is not None:
             m = "Sending results to mongo"
             logging.debug(m)
@@ -256,14 +251,19 @@ class HitterService(ConsumerMixin):
             if not json_insert:
                 logging.debug("Failed to insert the processed syslog information in mongo")
 
+    def store_kombu(self, etl_data):
         logging.debug("Storing message in logstash queue")
         try:
-            with Connection(self.logstash_conn) as conn:
+            with Connection(self.logstash_uri) as conn:
                 q = conn.SimpleQueue(self.logstash_queue)
                 q.put(json.dumps(etl_data))
                 q.close()
         except:
             logging.debug("Storing message done")
+
+    def store_results(self, syslog_msg, etl_data):
+        self.store_mongo(syslog_msg, etl_data)
+        self.store_kombu(etl_data)
 
     def read_messages(self):
         msgs = self._read_messages(cnt=self.msg_limit,

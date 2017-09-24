@@ -101,16 +101,16 @@ class HitterService(ConsumerMixin):
                  hosts_file=None, mongo_backend=None,
                  etl_backend=ETL, msg_limit=100,
                  #  leaving it open to use kombu to buffer messages
-                 logstash_uri=BROKER_URI,
-                 logstash_queue=LOGSTASH_QUEUE):
+                 store_uri=BROKER_URI,
+                 store_queue=LOGSTASH_QUEUE):
 
         if hosts_file is not None:
             self.KNOWN_HOSTS = KnownHosts(filename=hosts_file)
 
         self.broker_uri = broker_uri
         self.queue = broker_queue
-        self.logstash_uri = logstash_uri
-        self.logstash_queue = logstash_queue
+        self.store_uri = store_uri
+        self.store_queue = store_queue
 
         self.mongo_backend = mongo_backend
         self.etl_backend = etl_backend
@@ -199,13 +199,15 @@ class HitterService(ConsumerMixin):
         r.update(sm)
         return r
 
-    def process_and_report(self, message_str):
+    def process_and_report(self, incoming_msg):
         logging.debug("Processing and report syslog_msg")
-        message = {}
-        try:
-            message = json.loads(message_str)
-        except:
-            raise
+        message = incoming_msg
+        if isinstance(str, incoming_msg):
+            try:
+                message = json.loads(incoming_msg)
+            except:
+                raise
+
         syslog_msg = message.get('syslog_msg', '')
         syslog_server_ip = message.get('syslog_server_ip', '')
         catcher_name = message.get('catcher_name', '')
@@ -258,9 +260,9 @@ class HitterService(ConsumerMixin):
     def store_kombu(self, etl_data):
         logging.debug("Storing message in logstash queue")
         try:
-            with Connection(self.logstash_uri) as conn:
-                q = conn.SimpleQueue(self.logstash_queue)
-                q.put(json.dumps(etl_data))
+            with Connection(self.store_uri) as conn:
+                q = conn.SimpleQueue(self.store_queue)
+                q.put(etl_data)
                 q.close()
         except:
             logging.debug("Storing message done")
@@ -270,7 +272,7 @@ class HitterService(ConsumerMixin):
         self.store_kombu(etl_data)
 
     def read_messages(self):
-        msgs = self._read_messages(self.logstash_uri, self.logstash_queue,
+        msgs = self._read_messages(self.store_uri, self.store_queue,
                                    cnt=self.msg_limit,
                                    callback=self.process_and_report)
         return msgs

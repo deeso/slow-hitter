@@ -77,8 +77,8 @@ if __name__ == "__main__":
                      hosts_file=args.known_hosts,
                      mongo_backend=mongo_backend,
                      etl_backend=etl_backend,
-                     logstash_uri=args.buffer_uri,
-                     logstash_queue=args.buffer_queue)
+                     store_uri=args.buffer_uri,
+                     store_queue=args.buffer_queue)
 
     try:
         logging.debug("Starting the syslog listener")

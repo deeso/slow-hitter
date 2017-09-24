@@ -1,15 +1,15 @@
 from hashlib import sha256
-from datetime import datetime
 from .etl import ETL
 from kombu.mixins import ConsumerMixin
 from kombu import Connection
 
 import traceback
 import Queue
-from tzlocal import get_localzone
 import json
 import time
 import pytz
+from datetime import datetime
+from tzlocal import get_localzone
 import socket
 
 import logging
@@ -18,7 +18,6 @@ import os
 
 class KnownHosts(object):
     HOST_FILE = "/etc/hosts"
-
     def __init__(self, filename=HOST_FILE):
         self.filename = filename
         try:
@@ -97,6 +96,9 @@ class HitterService(ConsumerMixin):
         6: "INFORMATIONAL",
         7: "DEBUG",
     }
+    MY_TZ = os.environ.get('CATCHER_TZ', 'NOT_SET')
+    TZ_INFO = pytz.timezone(MY_TZ) if MY_TZ != 'NOT_SET' else None
+
 
     def __init__(self, broker_uri=BROKER_URI, broker_queue=BROKER_QUEUE,
                  hosts_file=None, mongo_backend=None,
@@ -145,13 +147,14 @@ class HitterService(ConsumerMixin):
         return cls.SYSLOG_MSG_TYPE[v]
 
     @classmethod
-    def format_timestamp(self, tstamp, catcher_tz_str):
-        catcher_tz = pytz.timezone(catcher_tz_str)
-        local_tz = catcher_tz.localize(tstamp, is_dst=None)
-        utc_tz = local_tz.astimezone(pytz.utc)
-
-        return utc_tz.strftime("%Y-%m-%dT%H:%M:%S") +\
-            ".%03d" % (tstamp.microsecond / 1000) + "Z"
+    def format_timestamp(self, tstamp):
+        if not self.TZ_INFO is not  None:
+            local_tz = self.TZ_INFO.localize(tstamp, is_dst=None)
+            utc_tz = local_tz.astimezone(pytz.utc)
+            return str(utc_tz.strftime("%Y-%m-%dT%H:%M:%S") +\
+            ".%03d" % (tstamp.microsecond / 1000) + "Z")
+        return str(tstamp.strftime("%Y-%m-%dT%H:%M:%S") +\
+            ".%03d" % (tstamp.microsecond / 1000))
 
     @classmethod
     def get_base_json(cls, syslog_msg, syslog_server_ip,
@@ -159,11 +162,12 @@ class HitterService(ConsumerMixin):
         r = {'source': "syslog", 'raw': syslog_msg,
              'type': 'json',
              '_id': sha256(syslog_msg).hexdigest(),
-             '@timestamp': cls.format_timestamp(datetime.now(), catcher_tz),
+             '@timestamp': cls.format_timestamp(datetime.now()),
              '@version': "1",
              'message': "transformed syslog",
              'path': '',
              'tags': [],
+             'catcher_tz': catcher_tz
              }
         t, msg = cls.split_alert_message(syslog_msg)
         r['syslog_level'] = cls.calculate_msg_type(syslog_msg)
@@ -196,9 +200,22 @@ class HitterService(ConsumerMixin):
             if sm.get('rule_name', None) is not None:
                 sm['tags'].append(sm['rule_name'])
         except:
-            pass
+            tb = traceback.format_exc()
+            logging.debug("[XXX] Error: "+tb)
+
         r.update(sm)
         return r
+
+    def extract_message_components(self, msg_dict):
+        syslog_msg = msg_dict.get('syslog_msg', '')
+        syslog_server_ip = msg_dict.get('syslog_server_ip', '')
+        catcher_name = msg_dict.get('catcher_name', '')
+        catcher_tz = msg_dict.get('catcher_tz', str(get_localzone()))
+
+        return self.process_message(syslog_msg,
+                                        syslog_server_ip,
+                                        catcher_name, catcher_tz)
+
 
     def process_and_report(self, incoming_msg):
         logging.debug("Processing and report syslog_msg")
@@ -207,18 +224,13 @@ class HitterService(ConsumerMixin):
             try:
                 message = json.loads(incoming_msg)
             except:
+                message = {}
                 tb = traceback.format_exc()
                 logging.debug("[XXX] Error: "+tb)
                 raise
 
-        syslog_msg = message.get('syslog_msg', '')
-        syslog_server_ip = message.get('syslog_server_ip', '')
-        catcher_name = message.get('catcher_name', '')
-        catcher_tz = message.get('catcher_tz', get_localzone())
-
-        etl_data = self.process_message(syslog_msg,
-                                        syslog_server_ip,
-                                        catcher_name, catcher_tz)
+        etl_data = self.extract_message_components(message)
+        syslog_msg = etl_data['raw']
         self.store_results(syslog_msg, etl_data)
         return etl_data
 

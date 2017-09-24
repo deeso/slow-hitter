@@ -61,7 +61,8 @@ if __name__ == "__main__":
     mongo_backend = MongoConnection(args.mhost, args.mport,
                                     args.muser, args.mpass,
                                     args.mdb)
-    etl_backend = ETL.setup_grokker(args)
+    ETL.setup_grokker(args)
+    etl_backend = ETL
 
     service = Hitter(broker_uri=args.broker_uri,
                      broker_queue=args.broker_queue,

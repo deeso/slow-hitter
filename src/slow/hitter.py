@@ -233,11 +233,14 @@ class HitterService(ConsumerMixin):
                     cnt += -1
                     try:
                         message = q.get(block=False)
-                        print message.payload
+                        logging.debug("made it here")
+                        logging.debug(message.payload)
                         if callback is not None:
+                            logging.debug("made it here 1")
                             data = callback(message.payload)
                             msgs.append(data)
-                            print data
+                            logging.debug("made it here 2")
+                            logging.debug(data)
                         message.ack()
                     except Queue.Empty:
                         break

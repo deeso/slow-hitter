@@ -5,6 +5,9 @@ import sys
 from slow.hitter import HitterService as Hitter
 from slow.hitter import KnownHosts
 
+from slow.etl import ETL, DEFAULT_NAMES, DEFAULT_PATTERNS, DEFAULT_CONFIG
+from slow.mongo_backend import MongoConnection
+
 logging.getLogger().setLevel(logging.INFO)
 ch = logging.StreamHandler(sys.stdout)
 ch.setLevel(logging.DEBUG)
@@ -41,6 +44,8 @@ parser.add_argument('-buffer_queue', type=str, default=Hitter.LOGSTASH_QUEUE,
                     help='kombu queue for results')
 parser.add_argument('-known_hosts', type=str, default=KnownHosts.HOST_FILE,
                     help='hosts file to load')
+parser.add_argument('-msg_limit', type=int, default=100,
+                    help='limit the number of messages')
 
 
 V = 'log levels: INFO: %d, DEBUG: %d, WARRNING: %d' % (logging.INFO,
@@ -48,20 +53,6 @@ V = 'log levels: INFO: %d, DEBUG: %d, WARRNING: %d' % (logging.INFO,
                                                        logging.WARNING)
 parser.add_argument('-log_level', type=int, default=logging.DEBUG,
                     help=V)
-
-
-def setup_known_hosts(parser_args):
-    global KNOWN_HOSTS
-    known_hosts = parser_args.known_hosts
-    if known_hosts is not None:
-        logging.debug("Loading known hosts")
-        data = open(known_hosts).read()
-        for line in data.splitlines():
-            if len(line.strip()) == 0:
-                continue
-            ip, host = line.strip().split()
-            KNOWN_HOSTS[ip] = host
-        logging.debug("Loading known hosts completed")
 
 
 if __name__ == "__main__":
@@ -78,7 +69,8 @@ if __name__ == "__main__":
                      mongo_backend=mongo_backend,
                      etl_backend=etl_backend,
                      store_uri=args.buffer_uri,
-                     store_queue=args.buffer_queue)
+                     store_queue=args.buffer_queue,
+                     msg_limit=args.msg_limit)
 
     try:
         logging.debug("Starting the syslog listener")

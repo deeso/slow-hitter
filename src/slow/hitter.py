@@ -4,6 +4,7 @@ from .etl import ETL
 from kombu.mixins import ConsumerMixin
 from kombu import Connection
 
+import traceback
 import Queue
 from tzlocal import get_localzone
 import json
@@ -206,6 +207,8 @@ class HitterService(ConsumerMixin):
             try:
                 message = json.loads(incoming_msg)
             except:
+                tb = traceback.format_exc()
+                logging.debug("[XXX] Error: "+tb)
                 raise
 
         syslog_msg = message.get('syslog_msg', '')
@@ -233,10 +236,7 @@ class HitterService(ConsumerMixin):
                     cnt += -1
                     try:
                         message = q.get(block=False)
-                        logging.debug("made it here")
-                        logging.debug(message.payload)
                         if callback is not None:
-                            logging.debug("made it here 1")
                             data = callback(message.payload)
                             msgs.append(data)
                             logging.debug("made it here 2")
@@ -244,8 +244,13 @@ class HitterService(ConsumerMixin):
                         message.ack()
                     except Queue.Empty:
                         break
+                    except:
+                        tb = traceback.format_exc()
+                        logging.debug("[XXX] Error: "+tb)
             logging.debug("Successfully read %d messages" % len(msgs))
         except:
+            tb = traceback.format_exc()
+            logging.debug("[XXX] Error: "+tb)
             logging.debug("Failed to read message")
 
     def store_mongo(self, syslog_msg, etl_data):
@@ -268,6 +273,8 @@ class HitterService(ConsumerMixin):
                 q.put(etl_data)
                 q.close()
         except:
+            tb = traceback.format_exc()
+            logging.debug("[XXX] Error: "+tb)
             logging.debug("Storing message done")
 
     def store_results(self, syslog_msg, etl_data):

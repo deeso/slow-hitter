@@ -264,6 +264,7 @@ class HitterService(ConsumerMixin):
             tb = traceback.format_exc()
             logging.debug("[XXX] Error: "+tb)
             logging.debug("Failed to read message")
+        return msgs
 
     def store_mongo(self, syslog_msg, etl_data):
         if self.mongo_backend is not None:
@@ -284,10 +285,11 @@ class HitterService(ConsumerMixin):
                 q = conn.SimpleQueue(self.store_queue)
                 q.put(etl_data)
                 q.close()
+                logging.debug("Storing message in logstash success")
         except:
             tb = traceback.format_exc()
             logging.debug("[XXX] Error: "+tb)
-            logging.debug("Storing message done")
+            logging.debug("Storing message in logstash queue failed")
 
     def store_results(self, syslog_msg, etl_data):
         self.store_mongo(syslog_msg, etl_data)

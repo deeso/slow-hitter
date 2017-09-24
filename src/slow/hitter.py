@@ -158,7 +158,7 @@ class HitterService(ConsumerMixin):
 
     @classmethod
     def get_base_json(cls, syslog_msg, syslog_server_ip,
-                      catcher_name, catcher_tz):
+                      catcher_name, catcher_host, catcher_tz):
         r = {'source': "syslog", 'raw': syslog_msg,
              'type': 'json',
              '_id': sha256(syslog_msg).hexdigest(),
@@ -167,7 +167,9 @@ class HitterService(ConsumerMixin):
              'message': "transformed syslog",
              'path': '',
              'tags': [],
-             'catcher_tz': catcher_tz
+             'catcher_tz': catcher_tz,
+             'catcher_host': catcher_host,
+             'catcher_name': catcher_name
              }
         t, msg = cls.split_alert_message(syslog_msg)
         r['syslog_level'] = cls.calculate_msg_type(syslog_msg)
@@ -182,12 +184,13 @@ class HitterService(ConsumerMixin):
     def resolve_host(cls, ip_host):
         return cls.KNOWN_HOSTS.resolve_host(ip_host)
 
-    def process_message(self, syslog_msg, syslog_server_ip,
-                        catcher_name, catcher_tz):
+    def process_message(self, syslog_msg,
+                        syslog_server_ip,
+                        catcher_name, catcher_host, catcher_tz):
         m = "Extracting and converting msg from %s msg (syslog: %s)" % (syslog_server_ip, catcher_name)
         logging.debug(m)
         r = self.get_base_json(syslog_msg, syslog_server_ip,
-                               catcher_name, catcher_tz)
+                               catcher_name, catcher_host, catcher_tz)
         sm = {}
         try:
             result = self.etl_backend.syslog_et(syslog_msg)
@@ -209,12 +212,13 @@ class HitterService(ConsumerMixin):
     def extract_message_components(self, msg_dict):
         syslog_msg = msg_dict.get('syslog_msg', '')
         syslog_server_ip = msg_dict.get('syslog_server_ip', '')
+        catcher_host = msg_dict.get('catcher_host', '')
         catcher_name = msg_dict.get('catcher_name', '')
         catcher_tz = msg_dict.get('catcher_tz', str(get_localzone()))
 
         return self.process_message(syslog_msg,
-                                        syslog_server_ip,
-                                        catcher_name, catcher_tz)
+                                    syslog_server_ip,
+                                    catcher_name, catcher_host, catcher_tz)
 
 
     def process_and_report(self, incoming_msg):

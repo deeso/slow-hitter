@@ -58,8 +58,7 @@ parser.add_argument('-log_level', type=int, default=logging.DEBUG,
 if __name__ == "__main__":
     args = parser.parse_args()
 
-    mongo_backend = MongoConnection(args.mhost, args.mport,
-                                    args.muser, args.mpass,
+    mongo_backend = MongoConnection(args.muri,
                                     args.mdb)
     ETL.setup_grokker(args)
     etl_backend = ETL

@@ -203,7 +203,7 @@ class HitterService(ConsumerMixin):
     def process_and_report(self, incoming_msg):
         logging.debug("Processing and report syslog_msg")
         message = incoming_msg
-        if isinstance(str, incoming_msg):
+        if isinstance(incoming_msg, str):
             try:
                 message = json.loads(incoming_msg)
             except:

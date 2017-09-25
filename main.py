@@ -14,9 +14,9 @@ parser = argparse.ArgumentParser(description='Start syslog-grok-mongo captures.'
 parser.add_argument('-name', type=str, default=Hitter.NAME,
                     help='name of the service')
 #  Mongo configs
-parser.add_argument('-muri', type=str, default=None,
-                    help='mongo user password')
-parser.add_argument('-mdb', type=str, default=None,
+parser.add_argument('-muri', type=str, default='mongo://127.0.0.1:27017',
+                    help='mongo uri')
+parser.add_argument('-mdb', type=str, default=MongoConnection.DB_NAME,
                     help='mongo db name')
 
 #  ETL stuff
@@ -58,8 +58,8 @@ if __name__ == "__main__":
     ch.setFormatter(formatter)
     logging.getLogger().addHandler(ch)
 
-    mongo_backend = MongoConnection(args.muri,
-                                    args.mdb)
+    mongo_backend = MongoConnection(uri=args.muri,
+                                    db_name=args.mdb)
     ETL.setup_grokker(args)
     etl_backend = ETL
 

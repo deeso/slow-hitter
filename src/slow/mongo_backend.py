@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 from hashlib import sha256
+import logging
 
 
 class MongoConnection(object):
@@ -13,6 +14,7 @@ class MongoConnection(object):
     def __init__(self, db_name=None, uri=None):
         self.uri = uri
         self.db_name = self.DB_NAME if db_name is None else db_name
+        logging.debug("MongoServer: %s dbname=%s" % (self.uri, self.db_name))
 
     def has_obj(self, mongodb_col, data):
         x = [i for i in mongodb_col.find(data).limit(1)]

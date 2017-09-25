@@ -259,7 +259,7 @@ class HitterService(ConsumerMixin):
                             logging.debug(data)
                         message.ack()
                     except Queue.Empty:
-                        logging.debug("%s queue is empty" % que)
+                        logging.debug("%s queue is empty" % queue)
                         break
                     except:
                         tb = traceback.format_exc()

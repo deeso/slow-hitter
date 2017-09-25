@@ -148,7 +148,7 @@ class HitterService(ConsumerMixin):
 
     @classmethod
     def format_timestamp(self, tstamp):
-        if not self.TZ_INFO is not  None:
+        if self.TZ_INFO is not  None:
             local_tz = self.TZ_INFO.localize(tstamp, is_dst=None)
             utc_tz = local_tz.astimezone(pytz.utc)
             return str(utc_tz.strftime("%Y-%m-%dT%H:%M:%S") +\

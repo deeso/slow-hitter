@@ -111,7 +111,7 @@ class HitterService(ConsumerMixin):
             self.KNOWN_HOSTS = KnownHosts(filename=hosts_file)
 
         self.broker_uri = broker_uri
-        self.queue = broker_queue
+        self.broker_queue = broker_queue
         self.store_uri = store_uri
         self.store_queue = store_queue
 
@@ -259,7 +259,7 @@ class HitterService(ConsumerMixin):
                             logging.debug(data)
                         message.ack()
                     except Queue.Empty:
-                        logging.debug("%s queue is empty" % queue)
+                        logging.debug("%s queue is empty" % que)
                         break
                     except:
                         tb = traceback.format_exc()
@@ -301,7 +301,7 @@ class HitterService(ConsumerMixin):
         self.store_kombu(etl_data)
 
     def read_messages(self):
-        msgs = self._read_messages(self.store_uri, self.store_queue,
+        msgs = self._read_messages(self.broker_uri, self.broker_queue,
                                    cnt=self.msg_limit,
                                    callback=self.process_and_report)
         return msgs

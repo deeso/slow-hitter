@@ -8,12 +8,6 @@ from slow.hitter import KnownHosts
 from slow.etl import ETL, DEFAULT_NAMES, DEFAULT_PATTERNS, DEFAULT_CONFIG
 from slow.mongo_backend import MongoConnection
 
-logging.getLogger().setLevel(logging.INFO)
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(message)s')
-ch.setFormatter(formatter)
-logging.getLogger().addHandler(ch)
 
 parser = argparse.ArgumentParser(description='Start syslog-grok-mongo captures.')
 
@@ -57,6 +51,12 @@ parser.add_argument('-log_level', type=int, default=logging.DEBUG,
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    logging.getLogger().setLevel(args.log_level)
+    ch = logging.StreamHandler(sys.stdout)
+    ch.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(message)s')
+    ch.setFormatter(formatter)
+    logging.getLogger().addHandler(ch)
 
     mongo_backend = MongoConnection(args.muri,
                                     args.mdb)

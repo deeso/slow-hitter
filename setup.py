@@ -12,7 +12,16 @@ setup(name='slow-hitter',
       description=DESC,
       author='adam pridgen',
       author_email='dso@thecoverofnight.com',
-      install_requires=['kombu', 'redis', 'pymongo', 'pytz', 'tzlocal', 'pygrok'],
+      install_requires=['kombu',
+                        'redis',
+                        'pymongo',
+                        'pytz',
+                        'tzlocal',
+                        'pygrok',
+                        'rule-chains'],
       packages=find_packages('src'),
       package_dir={'': 'src'},
+      dependency_links=[
+            "https://github.com/deeso/rule-chains/tarball/master#egg=rule-chains-1.0.0",
+      ]
 )
